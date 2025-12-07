@@ -1,9 +1,108 @@
 import 'package:anime_verse/widgets/app_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-class SignUpScreen extends StatelessWidget {
+import '../config/routes.dart';
+import '../provider/auth_provider.dart';
+import '../utils/snackbar_helper.dart';
+import '../utils/validators.dart';
+
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  // Controllers
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  // State
+  bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  /// Handle Sign Up dengan Email & Password
+  Future<void> _handleSignUp() async {
+    // Validate inputs
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    // Basic validation
+    final emailError = Validators.validateEmail(email);
+    if (emailError != null) {
+      SnackbarHelper.showError(context, emailError);
+      return;
+    }
+
+    final passwordError = Validators.validatePassword(password);
+    if (passwordError != null) {
+      SnackbarHelper.showError(context, passwordError);
+      return;
+    }
+
+    // Set loading state
+    setState(() => _isLoading = true);
+
+    // Call AuthProvider
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.signUpWithEmail(
+      email: email,
+      password: password,
+    );
+
+    // Reset loading state
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+
+    // Handle result
+    if (success) {
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Sign up berhasil!');
+        context.go(AppRoutes.home);
+      }
+    } else {
+      if (mounted) {
+        final errorMessage = authProvider.errorMessage ?? 'Sign up gagal';
+        SnackbarHelper.showError(context, errorMessage);
+      }
+    }
+  }
+
+  /// Handle Google Sign In
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.signInWithGoogle();
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+
+    if (success) {
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'Google Sign-In berhasil!');
+        context.go(AppRoutes.home);
+      }
+    } else {
+      if (mounted) {
+        final errorMessage = authProvider.errorMessage ?? 'Google Sign-In gagal';
+        SnackbarHelper.showError(context, errorMessage);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +156,8 @@ class SignUpScreen extends StatelessWidget {
 
                     // Email TextField
                     TextField(
+                      controller: _emailController,
+                      enabled: !_isLoading,
                       decoration: InputDecoration(
                         labelText: 'Email',
                         labelStyle: TextStyle(
@@ -90,6 +191,8 @@ class SignUpScreen extends StatelessWidget {
 
                     // Password TextField
                     TextField(
+                      controller: _passwordController,
+                      enabled: !_isLoading,
                       decoration: InputDecoration(
                         labelText: 'Password',
                         labelStyle: TextStyle(
@@ -107,10 +210,19 @@ class SignUpScreen extends StatelessWidget {
                           color: Colors.white70,
                           size: screenWidth * 0.06,
                         ),
-                        suffixIcon: Icon(
-                          Icons.visibility_off_outlined,
-                          color: Colors.white70,
-                          size: screenWidth * 0.06,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: Colors.white70,
+                            size: screenWidth * 0.06,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
                         ),
                         contentPadding: EdgeInsets.symmetric(
                           vertical: screenHeight * 0.025,
@@ -121,7 +233,7 @@ class SignUpScreen extends StatelessWidget {
                         fontSize: screenWidth * 0.04,
                         color: Colors.white,
                       ),
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                     ),
 
                     SizedBox(height: screenHeight * 0.03),
@@ -131,9 +243,7 @@ class SignUpScreen extends StatelessWidget {
                       width: double.infinity,
                       height: screenHeight * 0.075,
                       child: ElevatedButton(
-                          onPressed: () {
-                            // TODO: Implement sign up functionality
-                          },
+                          onPressed: _isLoading ? null : _handleSignUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue.withValues(alpha: 0.8),
                             foregroundColor: Colors.white,
@@ -142,7 +252,16 @@ class SignUpScreen extends StatelessWidget {
                             ),
                             elevation: 5,
                           ),
-                          child: Text(
+                          child: _isLoading
+                              ? SizedBox(
+                            width: screenWidth * 0.06,
+                            height: screenWidth * 0.06,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                              : Text(
                             'Sign Up',
                             style: TextStyle(
                               fontSize: screenWidth * 0.045,
@@ -189,10 +308,17 @@ class SignUpScreen extends StatelessWidget {
                       width: double.infinity,
                       height: screenHeight * 0.075,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // TODO: Implement Google sign in functionality
-                        },
-                        icon: SvgPicture.asset(
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
+                        icon: _isLoading
+                            ? SizedBox(
+                          width: screenWidth * 0.06,
+                          height: screenWidth * 0.06,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                            : SvgPicture.asset(
                           'assets/images/google_icon.svg',
                           height: screenWidth * 0.06,
                           width: screenWidth * 0.06,
@@ -234,7 +360,7 @@ class SignUpScreen extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () {
-                            // TODO: Navigate to sign in screen
+                            context.go(AppRoutes.signIn);
                           },
                           child: Text(
                             'Sign In',

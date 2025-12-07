@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,11 +20,31 @@ class AppRoutes {
 }
 
 GoRouter createRouter() {
-  final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> rootNavigatorKey =
+  GlobalKey<NavigatorState>();
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.home,
+    redirect: (context, state) {
+      final user = FirebaseAuth.instance.currentUser;
+      final isAuthenticated = user != null;
+      final isAuthRoute =
+          state.matchedLocation == AppRoutes.signIn ||
+              state.matchedLocation == AppRoutes.signUp;
+
+      if (!isAuthenticated && !isAuthRoute) {
+        return AppRoutes.signIn;
+      }
+
+      if (isAuthenticated && isAuthRoute) {
+        return AppRoutes.home;
+      }
+
+      return null;
+    },
+    refreshListenable: AuthStateNotifier(),
+
     routes: [
       GoRoute(
         path: AppRoutes.signIn,
@@ -37,13 +58,13 @@ GoRouter createRouter() {
       ),
 
       GoRoute(
-          path: '${AppRoutes.details}/:id',
-          name: 'detail',
-          parentNavigatorKey: rootNavigatorKey,
-          builder: (context, state) {
-            final animeId = state.pathParameters['id'] ?? '';
-            return DetailScreen(animeId: animeId);
-          }
+        path: '${AppRoutes.details}/:id',
+        name: 'detail',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) {
+          final animeId = state.pathParameters['id'] ?? '';
+          return DetailScreen(animeId: animeId);
+        },
       ),
 
       StatefulShellRoute.indexedStack(
@@ -104,4 +125,12 @@ GoRouter createRouter() {
       ),
     ),
   );
+}
+
+class AuthStateNotifier extends ChangeNotifier {
+  AuthStateNotifier() {
+    FirebaseAuth.instance.authStateChanges().listen((_) {
+      notifyListeners();
+    });
+  }
 }

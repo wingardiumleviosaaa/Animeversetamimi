@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -38,11 +39,38 @@ class AnimeCard extends StatelessWidget {
                   flex: 8,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    child: Image.asset(
-                      imagePath,
+                    child: imagePath.isNotEmpty
+                        ? CachedNetworkImage(
+                      imageUrl: imagePath,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
+                      placeholder: (context, url) => Container(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.broken_image, size: 40),
+                            SizedBox(height: 8),
+                            Text(
+                              'Image not available',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                        : Container(
+                      color: Colors.white.withValues(alpha:0.1),
+                      child: const Icon(Icons.image_not_supported),
                     ),
                   ),
                 ),
@@ -78,6 +106,5 @@ class AnimeCard extends StatelessWidget {
         },
       ),
     );
-
   }
 }

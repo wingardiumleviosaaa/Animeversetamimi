@@ -1,13 +1,19 @@
-import 'package:anime_verse/screens/detail_screen.dart';
-import 'package:anime_verse/screens/favorite_screen.dart';
-import 'package:anime_verse/screens/home_screen.dart';
-import 'package:anime_verse/screens/profile_screen.dart';
-import 'package:anime_verse/screens/signin_screen.dart';
+import 'package:anime_verse/provider/app_state_provider.dart';
+import 'package:anime_verse/provider/auth_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 
 import 'config/routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp();
+
+  await GoogleSignIn.instance.initialize();
+
   runApp(const MyApp());
 }
 
@@ -16,13 +22,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'AnimeVerse',
-      theme: ThemeData(
-        fontFamily: 'Urbanist',
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppStateProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp.router(
+        title: 'AnimeVerse',
+        theme: ThemeData(fontFamily: 'Urbanist'),
+        routerConfig: createRouter(),
+        debugShowCheckedModeBanner: false,
       ),
-      routerConfig: createRouter(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
